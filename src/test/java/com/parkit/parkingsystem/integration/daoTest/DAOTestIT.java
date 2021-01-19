@@ -1,9 +1,8 @@
 package com.parkit.parkingsystem.integration.daoTest;
 
 import com.parkit.parkingsystem.config.DataBaseConfig;
-import com.parkit.parkingsystem.integration.constants.DBConstants;
 import com.parkit.parkingsystem.constants.ParkingType;
-//import com.parkit.parkingsystem.integration.config.DataBaseTestConfig;
+import com.parkit.parkingsystem.integration.constants.DBConstants;
 import com.parkit.parkingsystem.model.ParkingSpot;
 import com.parkit.parkingsystem.model.Ticket;
 import org.apache.logging.log4j.LogManager;
@@ -12,7 +11,8 @@ import org.apache.logging.log4j.Logger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Timestamp;
+
+//import com.parkit.parkingsystem.integration.config.DataBaseTestConfig;
 
 public class DAOTestIT {
 
