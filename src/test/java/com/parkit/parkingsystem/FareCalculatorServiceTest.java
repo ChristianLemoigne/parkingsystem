@@ -28,7 +28,6 @@ public class FareCalculatorServiceTest {
     private static final String  VEHICULE_REG_NUMBER = "68 DE 43";
     private static final int  NB_MILLISECOND_IN_AN_HOUR = 60 * 60 * 1000 ;
     private static final int  NB_MILLISECOND_IN_45_MINUTES = 45 * 60 * 1000 ;
-
     private static final float REDUCTION_FOR_RECURRENT_USER = (float) 0.95;
     private static final double delta = 0.01;
     private static FareCalculatorService fareCalculatorService;
