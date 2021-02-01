@@ -43,18 +43,32 @@ public class Ticket {
     }
 
     public Date getInTime() {
-        return inTime;
+        // copie "défensive"  car Date est mutable
+        return inTime == null ? null : (Date) inTime.clone();
     }
 
     public void setInTime(Date inTime) {
-        this.inTime = inTime;
+
+        // copie "défensive"  car Date est mutable
+        if(inTime == null) {
+            this.inTime = null;
+        } else {
+            this.inTime = new Date(inTime.getTime());
+        }
     }
 
     public Date getOutTime() {
-        return outTime;
+
+        return outTime == null ? null : (Date) outTime.clone();
     }
 
     public void setOutTime(Date outTime) {
-        this.outTime = outTime;
+
+        if(outTime == null) {
+            this.outTime = null;
+        } else {
+            this.outTime = new Date(outTime.getTime());
+        }
     }
+
 }

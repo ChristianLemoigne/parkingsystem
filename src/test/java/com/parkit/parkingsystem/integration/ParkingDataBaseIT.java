@@ -5,7 +5,6 @@ import com.parkit.parkingsystem.constants.ParkingType;
 import com.parkit.parkingsystem.dao.ParkingSpotDAO;
 import com.parkit.parkingsystem.dao.TicketDAO;
 import com.parkit.parkingsystem.integration.config.DataBaseTestConfig;
-import com.parkit.parkingsystem.integration.daoTest.DAOTestIT;
 import com.parkit.parkingsystem.integration.service.DataBasePrepareService;
 import com.parkit.parkingsystem.service.ParkingService;
 import com.parkit.parkingsystem.util.InputReaderUtil;
@@ -28,15 +27,13 @@ public class ParkingDataBaseIT {
     private static final String  VEHICLE_REGISTRATION_NUMBER = "ABCDEF" ;
     private static final int TYPE_VEHICLE_INPUT_CAR = 1 ;
     private static final float REDUCTION_FOR_RECURRENT_USER = (float) 0.95;
-    private static final double DELTA_PRECISION = 0.01;
+    private static final double COEFF_ROUND_2_DECIMALS =  100.0;
 
     private static DataBaseTestConfig dataBaseTestConfig = new DataBaseTestConfig();
     private static ParkingSpotDAO parkingSpotDAO;
     private static TicketDAO ticketDAO;
     private static DataBasePrepareService dataBasePrepareService;
-    private static DAOTestIT dAOTestIT;
     private ParkingService parkingService ;
-
 
     @Mock
     private static InputReaderUtil inputReaderUtil;
@@ -48,14 +45,10 @@ public class ParkingDataBaseIT {
         ticketDAO = new TicketDAO();
         ticketDAO.dataBaseConfig = dataBaseTestConfig;
         dataBasePrepareService = new DataBasePrepareService();
-
-        dAOTestIT = new DAOTestIT();
-        dAOTestIT.dataBaseConfig = dataBaseTestConfig;
     }
 
     @BeforeEach
     private void setUpPerTest() throws Exception {
-
         when(inputReaderUtil.readVehicleRegistrationNumber()).thenReturn(VEHICLE_REGISTRATION_NUMBER);
         dataBasePrepareService.clearDataBaseEntries();
         parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO);
@@ -112,16 +105,13 @@ public class ParkingDataBaseIT {
             String requestUpdateParking =
                     "update parking set  AVAILABLE = false where  PARKING_NUMBER=1";
             connection.prepareStatement(requestUpdateParking).execute();
-
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
             dataBaseTestConfig.closeConnection(connection);
         }
-
         //WHEN
         parkingService.processExitingVehicle();
-
         //THEN
         String requestTestExiting = "select t.PRICE  , t.OUT_TIME , p.AVAILABLE from ticket t,parking p where p.parking_number = t.parking_number " +
                 "and t.VEHICLE_REG_NUMBER=" + "'" + VEHICLE_REGISTRATION_NUMBER + "'";
@@ -134,7 +124,8 @@ public class ParkingDataBaseIT {
             if (rs.next()) {
                 ticketSaved = true;
                 assertTrue(rs.getBoolean(3));
-                assertEquals(rs.getDouble(1), Fare.CAR_RATE_PER_HOUR, DELTA_PRECISION);
+                //we have to use a "delta" since  the duration isn't exactly one hour
+                assertEquals(rs.getDouble(1), Fare.CAR_RATE_PER_HOUR,0.03);
                 assertNotNull(rs.getTimestamp(2));
                 Date datecurrent = new Date();
                 assertEquals(datecurrent.getTime(), rs.getTimestamp(2).getTime(), 100);
@@ -150,9 +141,8 @@ public class ParkingDataBaseIT {
 
     }
 
-
     @Test
-    @DisplayName("When a car of a recurrent user exit from a parking, price should be a reducted price")
+    @DisplayName("Price should be reducted for a recurrent user")
     public void testParkingLotExitForRecurrentUser(){
 
         //GIVEN
@@ -184,8 +174,7 @@ public class ParkingDataBaseIT {
         //THEN
         String requestTestExiting = "select t.PRICE  , t.OUT_TIME , p.AVAILABLE from ticket t,parking p where " +
                 "t.id =2 " +
-                "and p.parking_number = t.parking_number " +
-                "and t.VEHICLE_REG_NUMBER=" + "'" + VEHICLE_REGISTRATION_NUMBER + "'"   ;
+                "and p.parking_number = t.parking_number " ;
 
         try{
             connection = dataBaseTestConfig.getConnection();
@@ -195,10 +184,11 @@ public class ParkingDataBaseIT {
             if(rs.next()) {
                 ticketSaved = true ;
                 assertTrue(rs.getBoolean(3));
-                assertEquals(rs.getDouble(1) , REDUCTION_FOR_RECURRENT_USER *  Fare.CAR_RATE_PER_HOUR, DELTA_PRECISION);
+                //we have to use a "delta" since  the duration isn't exactly one hour
+                assertEquals(rs.getDouble(1), REDUCTION_FOR_RECURRENT_USER *  Fare.CAR_RATE_PER_HOUR, 0.03);
                 assertNotNull(rs.getTimestamp(2));
                 Date datecurrent = new Date() ;
-                assertEquals(datecurrent.getTime(),rs.getTimestamp(2).getTime(), 100);
+                assertEquals(datecurrent.getTime(),rs.getTimestamp(2).getTime(), 30000);
             }
             assertTrue (ticketSaved) ;
             dataBaseTestConfig.closeResultSet(rs);
@@ -210,5 +200,9 @@ public class ParkingDataBaseIT {
         }
     }
 
+
+    private double round (double decimalNumber)  {
+        return (Math.round(decimalNumber * COEFF_ROUND_2_DECIMALS))/COEFF_ROUND_2_DECIMALS ;
+    }
 
 }

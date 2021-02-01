@@ -15,9 +15,7 @@ public class ParkingService {
 
     private static final Logger logger = LogManager.getLogger("ParkingService");
 
-    //private static FareCalculatorService fareCalculatorService;
     private  FareCalculatorService fareCalculatorService;
-
     private InputReaderUtil inputReaderUtil;
     private ParkingSpotDAO parkingSpotDAO;
     private  TicketDAO ticketDAO;
@@ -26,7 +24,6 @@ public class ParkingService {
         this.inputReaderUtil = inputReaderUtil;
         this.parkingSpotDAO = parkingSpotDAO;
         this.ticketDAO = ticketDAO;
-
         this.fareCalculatorService = new FareCalculatorService(ticketDAO);
     }
 
@@ -34,10 +31,7 @@ public class ParkingService {
         try{
             ParkingSpot parkingSpot = getNextParkingNumberIfAvailable();
 
-            // ASK GEOFFREY  !!!
-            // enlever parkingSpot.getId() > 0  car je sais pas faire un  tu avec    !getId()>0
-            //if(parkingSpot !=null && parkingSpot.getId() > 0){
-
+            //It is not possible to write a TU with  !getId()>0  !!!
             if(parkingSpot !=null ){
                 String vehicleRegNumber = getVehichleRegNumber();
                 parkingSpot.setAvailable(false);
@@ -53,6 +47,12 @@ public class ParkingService {
                 ticket.setInTime(inTime);
                 ticket.setOutTime(null);
                 ticketDAO.saveTicket(ticket);
+
+                //STORY#2 : 5%-discount for recurring users
+                if (isRecurrentUser(ticket.getVehicleRegNumber())) {
+                    System.out.println("Welcome back! As a recurring user of our parking lot, you'll benefit from a 5% discount.");
+                }
+
                 System.out.println("Generated Ticket and saved in DB");
                 System.out.println("Please park your vehicle in spot number:"+parkingSpot.getId());
                 System.out.println("Recorded in-time for vehicle number:"+vehicleRegNumber+" is:"+inTime);
@@ -60,6 +60,10 @@ public class ParkingService {
        }catch(Exception e){
             logger.error("Unable to process incoming vehicle",e);
        }
+    }
+
+    private boolean isRecurrentUser( String   vehicleRegNumber) {
+        return ticketDAO.isRecurrentUser(vehicleRegNumber) ;
     }
 
     private String getVehichleRegNumber() throws Exception {
