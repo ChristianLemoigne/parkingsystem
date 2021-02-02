@@ -48,7 +48,6 @@ public class Ticket {
     }
 
     public void setInTime(Date inTime) {
-
         // copie "défensive"  car Date est mutable
         if(inTime == null) {
             this.inTime = null;

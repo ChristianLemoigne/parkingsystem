@@ -31,6 +31,7 @@ public class FareCalculatorServiceTest {
 
     private static final String  VEHICULE_REG_NUMBER = "ABCDEF";
     private static final long  NB_MILLISECOND_IN_AN_HOUR = 60L * 60 * 1000 ;
+    private static final long  NB_MILLISECOND_IN_HALF_AN_HOUR = 30L * 60 * 1000 ;
     private static final float REDUCTION_FOR_RECURRENT_USER = (float) 0.95;
     private static final double COEFF_ROUND_2_DECIMALS =  100.0;
     private static FareCalculatorService fareCalculatorService;
@@ -44,45 +45,53 @@ public class FareCalculatorServiceTest {
         fareCalculatorService = new FareCalculatorService(ticketDAO);
         ticket = new Ticket();
         ticket.setInTime(new Date());
-        ticket.setOutTime(new Date(ticket.getInTime().getTime() + NB_MILLISECOND_IN_AN_HOUR));
         ticket.setVehicleRegNumber(VEHICULE_REG_NUMBER);
-        ParkingSpot parkingSpot = new ParkingSpot(1, CAR,false);
-        ticket.setParkingSpot(parkingSpot);
     }
 
     @Test
-    @DisplayName("Fare for parking a Car an Hour should be equal to Fare.CAR_RATE_PER_HOUR")
+    @DisplayName("Fare should be equal to Fare.CAR_RATE_PER_HOUR when parking a Car an Hour")
     public void calculateFareCarForAnHour() {
-        //GIVEN WHEN
+        //GIVEN
+        ticket.setOutTime(new Date(ticket.getInTime().getTime() + NB_MILLISECOND_IN_AN_HOUR));
+        ticket.setParkingSpot(new ParkingSpot(1, CAR,false));
+        //WHEN
         fareCalculatorService.calculateFare(ticket);
         //THEN
         assertEquals(Fare.CAR_RATE_PER_HOUR, ticket.getPrice());
     }
 
-    @DisplayName("Fare should be free when Less than 30 minutes parking time ")
-    @ParameterizedTest(name = "{index} -  Vehicule: {0}  duration: {1} Minute(s)")
-    @MethodSource("provideDataForTestLessThan30MinParkingTime")
-    public void calculateFareWithLessThan30MinutesParkingTimeShouldBeFree(ParkingType parkingType, int durationParkingInMinuts) {
+    @Test
+    @DisplayName("Fare should be free when parking a Car half an Hour")
+    public void FareShouldBeFreeWhenParkingACarHalfAnHour() {
         //GIVEN
-        ticket.setOutTime(new Date(ticket.getInTime().getTime() +  durationParkingInMinuts * 60 * 1000));
+        ticket.setOutTime(new Date(ticket.getInTime().getTime() + NB_MILLISECOND_IN_HALF_AN_HOUR));
+        ticket.setParkingSpot(new ParkingSpot(1, CAR,false));
         //WHEN
         fareCalculatorService.calculateFare(ticket);
         //THEN
         assertEquals(0.0, ticket.getPrice());
     }
-    static Stream<Arguments> provideDataForTestLessThan30MinParkingTime() {
-        return Stream.of(Arguments.of(CAR, 0), Arguments.of(CAR, 1), Arguments.of(CAR, 10), Arguments.of(CAR, 30),
-                Arguments.of(BIKE, 0), Arguments.of(BIKE, 1), Arguments.of(BIKE, 10), Arguments.of(BIKE, 30));
-    }
 
+    @Test
+    @DisplayName("Fare should be discount when recurrent user parking a Car for an Hour")
+    public void FareShouldBeDiscountWhenRecurrentUserParkACarForAnHour() {
+        //GIVEN
+        when(ticketDAO.isRecurrentUser(VEHICULE_REG_NUMBER)).thenReturn(true);
+        ticket.setOutTime(new Date(ticket.getInTime().getTime() + NB_MILLISECOND_IN_AN_HOUR));
+        ticket.setParkingSpot(new ParkingSpot(1, CAR,false));
+        //WHEN
+        fareCalculatorService.calculateFare(ticket);
+        //THEN
+        assertEquals(1.43, ticket.getPrice());
+    }
 
     @DisplayName("Fare should be equal to ratePerHour *  nb of hours when this nb is entire")
     @ParameterizedTest(name = "{index} -   Vehicule: {0}   Duration: {1} Hour(s)")
     @MethodSource("provideDataForTestMoreThan30MinParkingTime")
     public void FareShouldBeEqualtoRatePerHourMultiplyByNbHours(ParkingType parkingType,int durationParkingHours) {
         //GIVEN
-        ticket.getParkingSpot().setParkingType(parkingType);
         ticket.setOutTime(new Date(ticket.getInTime().getTime() + durationParkingHours * NB_MILLISECOND_IN_AN_HOUR));
+        ticket.setParkingSpot(new ParkingSpot(1, parkingType,false));
         //WHEN
         fareCalculatorService.calculateFare(ticket);
         //THEN
@@ -93,14 +102,13 @@ public class FareCalculatorServiceTest {
                 Arguments.of(BIKE, 1), Arguments.of(BIKE, 15), Arguments.of(BIKE, 36), Arguments.of(BIKE, 24 * 7));
     }
 
-
     @DisplayName("Fare should be correct when calculated from number of milliseconds")
     @ParameterizedTest(name = "{index} -   Vehicule: {0}   Duration: {1} Milliseconds(s) ")
     @MethodSource("provideDataForTestMoreThan30MinParkingTimeInMilliseconds")
     public void FareShouldBeCorrectWhenCalculatedFromNumberOfMilliseconds(ParkingType parkingType,long durationParkingInMilliseconds) {
         //GIVEN
-        ticket.getParkingSpot().setParkingType(parkingType);
         ticket.setOutTime(new Date(ticket.getInTime().getTime() + durationParkingInMilliseconds));
+        ticket.setParkingSpot(new ParkingSpot(1, parkingType,false));
         //WHEN
         fareCalculatorService.calculateFare(ticket);
         //THEN
@@ -111,20 +119,38 @@ public class FareCalculatorServiceTest {
                 Arguments.of(BIKE,1800001), Arguments.of(BIKE,2700333), Arguments.of(BIKE,3800000), Arguments.of(BIKE,99999999));
     }
 
-    @DisplayName("Fare should be discount for recurrent user")
-    @ParameterizedTest(name = "{index} -  Vehicule: {0}  duration: {1} Milliseconds(s) ")
-    @MethodSource("provideDataForTestMoreThan30MinParkingTimeInMilliseconds")
-    public void FareShouldBeDiscountForRecurrentUser(ParkingType parkingType,long durationParkingInMilliseconds) {
+    @DisplayName("Fare should be free when parking less than 30 minutes")
+    @ParameterizedTest(name = "{index} -  Vehicule: {0}  duration: {1} Minute(s)")
+    @MethodSource("provideDataForTestLessThan30MinParkingTime")
+    public void FareShouldBeFreeWhenParkingLessThan30Minutes(ParkingType parkingType, int durationParkingInMinuts) {
         //GIVEN
-        when(ticketDAO.isRecurrentUser(VEHICULE_REG_NUMBER)).thenReturn(true);
-        ticket.getParkingSpot().setParkingType(parkingType);
-        ticket.setOutTime(new Date(ticket.getInTime().getTime() + durationParkingInMilliseconds));
+        ticket.setOutTime(new Date(ticket.getInTime().getTime() + durationParkingInMinuts * 60L * 1000));
+        ticket.setParkingSpot(new ParkingSpot(1, parkingType,false));
         //WHEN
         fareCalculatorService.calculateFare(ticket);
         //THEN
-        assertEquals(round(REDUCTION_FOR_RECURRENT_USER * fareRatePerHour(parkingType) * durationParkingInMilliseconds / NB_MILLISECOND_IN_AN_HOUR), ticket.getPrice());
+        assertEquals(0.0, ticket.getPrice());
+    }
+    static Stream<Arguments> provideDataForTestLessThan30MinParkingTime() {
+        return Stream.of(Arguments.of(CAR, 0), Arguments.of(CAR, 1), Arguments.of(CAR, 10), Arguments.of(CAR, 30),
+                Arguments.of(BIKE, 0), Arguments.of(BIKE, 1), Arguments.of(BIKE, 10), Arguments.of(BIKE, 30));
     }
 
+    @DisplayName("Fare should be discount when recurrent user")
+    @ParameterizedTest(name = "{index} -  Vehicule: {0}  duration: {1} Milliseconds(s) ")
+    @MethodSource("provideDataForTestMoreThan30MinParkingTimeInMilliseconds")
+    public void FareShouldBeDiscountWhenRecurrentUser(ParkingType parkingType,long durationParkingInMilliseconds) {
+        //GIVEN
+        when(ticketDAO.isRecurrentUser(VEHICULE_REG_NUMBER)).thenReturn(true);
+        ticket.setOutTime(new Date(ticket.getInTime().getTime() + durationParkingInMilliseconds));
+        ticket.setParkingSpot(new ParkingSpot(1, parkingType,false));
+        double ExpectedPrice =  round(REDUCTION_FOR_RECURRENT_USER * fareRatePerHour(parkingType)
+                * durationParkingInMilliseconds / NB_MILLISECOND_IN_AN_HOUR);
+        //WHEN
+        fareCalculatorService.calculateFare(ticket);
+        //THEN
+        assertEquals(ExpectedPrice, ticket.getPrice());
+    }
 
     @Nested
     @DisplayName("calculate fare  should throw  Exceptions")
@@ -134,7 +160,8 @@ public class FareCalculatorServiceTest {
         @DisplayName("Fare  Should Throw IlleglArgumentException when  entry after exit")
         public void calculateFareShouldThrowIlleglArgumentExceptionWhenEntryAfterExit() {
             //GIVEN
-            ticket.setInTime(new Date(ticket.getOutTime().getTime() + 1));
+            ticket.setOutTime(new Date(ticket.getInTime().getTime() -1 ));
+            ticket.setParkingSpot(new ParkingSpot(1, CAR,false));
             //WHEN  THEN
             assertThrows(IllegalArgumentException.class, () -> fareCalculatorService.calculateFare(ticket));
         }
@@ -144,6 +171,7 @@ public class FareCalculatorServiceTest {
         public void calculateFareShouldThrowIllegalArgumentExceptionWhenExitTimeNull() {
             //GIVEN
             ticket.setOutTime(null);
+            ticket.setParkingSpot(new ParkingSpot(1, CAR,false));
             //WHEN  THEN
             assertThrows(IllegalArgumentException.class, () -> fareCalculatorService.calculateFare(ticket));
         }
@@ -152,14 +180,17 @@ public class FareCalculatorServiceTest {
         @DisplayName("Fare should throw IllegalArgumentException when parking type is null")
         public void calculateFareShouldThrowIllegalArgumentExceptionWhenParkingTypeIsNull() {
             //GIVEN
-            ticket.getParkingSpot().setParkingType(null);
+            ticket.setOutTime(new Date(ticket.getInTime().getTime() + NB_MILLISECOND_IN_AN_HOUR));
+            ticket.setParkingSpot(new ParkingSpot(1, null,false));
             //WHEN THEN
             assertThrows(IllegalArgumentException.class, () -> fareCalculatorService.calculateFare(ticket));
         }
+
         @Test
         @DisplayName("Fare should throw IllegalArgumentException when parking spot is null")
         public void calculateFareShouldThrowIllegalArgumentExceptionWhenParkingSpotIsNull() {
             //GIVEN
+            ticket.setOutTime(new Date(ticket.getInTime().getTime() + NB_MILLISECOND_IN_AN_HOUR));
             ticket.setParkingSpot(null);
             //WHEN THEN
             assertThrows(IllegalArgumentException.class, () -> fareCalculatorService.calculateFare(ticket));
@@ -167,7 +198,7 @@ public class FareCalculatorServiceTest {
     }
 
     private double round (double decimalNumber)  {
-        return (Math.round(decimalNumber * COEFF_ROUND_2_DECIMALS))/COEFF_ROUND_2_DECIMALS ;
+        return Math.round((decimalNumber + 0.0001) * COEFF_ROUND_2_DECIMALS) / COEFF_ROUND_2_DECIMALS ;
     }
     private  double fareRatePerHour( ParkingType parkingType ) {
         return parkingType == CAR ? Fare.CAR_RATE_PER_HOUR : Fare.BIKE_RATE_PER_HOUR;

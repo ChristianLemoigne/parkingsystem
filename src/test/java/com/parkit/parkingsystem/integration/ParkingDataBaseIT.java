@@ -202,7 +202,7 @@ public class ParkingDataBaseIT {
 
 
     private double round (double decimalNumber)  {
-        return (Math.round(decimalNumber * COEFF_ROUND_2_DECIMALS))/COEFF_ROUND_2_DECIMALS ;
+        return Math.round((decimalNumber + 0.001) * COEFF_ROUND_2_DECIMALS) / COEFF_ROUND_2_DECIMALS ;
     }
 
 }

@@ -51,7 +51,7 @@ public class FareCalculatorService {
         return ticketDAO.isRecurrentUser(vehicleRegNumber) ;
     }
     private double round (double decimalNumber)  {
-        return (Math.round(decimalNumber * COEFF_ROUND_2_DECIMALS))/COEFF_ROUND_2_DECIMALS ;
+        return Math.round((decimalNumber + 0.0001) * COEFF_ROUND_2_DECIMALS)/COEFF_ROUND_2_DECIMALS ;
     }
     private void  checkTicket (Ticket ticket) {
         if ((ticket.getOutTime() == null)) {
